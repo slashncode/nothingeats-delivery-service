@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package nothingeats.delivery.v1;
+
+option java_multiple_files = true;
+option java_package = "io.github.slashncode.nothingeats.delivery.grpc.v1";
+
+// Courier dispatch. Callers forward the customer's access token in `authorization`;
+// errors carry google.rpc.ErrorInfo with a stable reason in the domain "nothingeats".
+service DeliveryService {
+  // How long a delivery from pickup to drop-off takes right now, kitchen included.
+  // Fails with INVALID_ARGUMENT (reason DELIVERY_OUT_OF_RANGE) when the drop-off is too far away.
+  rpc QuoteDelivery(QuoteDeliveryRequest) returns (QuoteDeliveryResponse);
+}
+
+message GeoPoint {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+message QuoteDeliveryRequest {
+  GeoPoint pickup = 1;
+  GeoPoint drop_off = 2;
+  // The kitchen's part of the restaurant's advertised delivery time, in simulated minutes.
+  int32 preparation_minutes = 3;
+}
+
+message QuoteDeliveryResponse {
+  // Real seconds until arrival: the simulation runs faster than the clock on the wall.
+  int32 eta_seconds = 1;
+  // The same delivery in simulated minutes, as a real courier would need.
+  int32 simulated_minutes = 2;
+  int32 distance_meters = 3;
+  // More orders than couriers right now, so the quote includes a wait.
+  bool courier_shortage = 4;
+}

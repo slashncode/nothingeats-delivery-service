@@ -1,4 +1,4 @@
-// HTTP routes, persistence and other technology live here, behind the application's ports.
+// HTTP and gRPC endpoints, persistence, Kafka and the simulation ticker, behind the application's ports.
 plugins {
     id("nothingeats.kotlin-base")
     id("nothingeats.kotlinx-serialization")
@@ -10,6 +10,9 @@ dependencies {
     api(libs.nothingeats.platform.http)
     api(libs.nothingeats.platform.persistence)
     api(libs.nothingeats.ktor.posthog)
+    api(libs.nothingeats.platform.kafka)
+    api(libs.nothingeats.platform.grpc)
+    api(project(":grpc-api"))
     implementation(libs.exposed.java.time)
 
     testImplementation(testFixtures(project(":application")))

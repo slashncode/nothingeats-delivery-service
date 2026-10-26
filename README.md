@@ -1,52 +1,35 @@
-# nothingeats-kotlin-service-template
+# nothingeats-delivery-service
 
-Template for a NothingEats bounded-context service: Kotlin, Ktor, hexagonal Gradle modules, kotlin-inject, Postgres. It builds, tests and runs out of the box with a small `Item` example that shows every pattern.
+Fulfillment of [NothingEats](https://github.com/slashncode/nothingeats): a courier for every order that never arrives, simulated in real time. Every step, every courier position and the arrival are real events; only the food is missing.
 
-Part of [NothingEats](https://github.com/slashncode/nothingeats).
+## How the simulation works
 
-## Create a service
+- A placed order (`ordering.order.v1`) gets a courier at once: a name from the shift, a vehicle, a start somewhere 0.7–1.5 km from the restaurant, two curved routes (to the restaurant, then to the customer) and a **plan**: when the kitchen starts, when the courier picks up, rides off and arrives. The plan follows the time the customer was promised at checkout.
+- Each row in `deliveries` keeps the plan and a `next_step_at`. A **ticker on every pod** (1 s) locks due rows with `FOR UPDATE SKIP LOCKED`, moves them on and publishes each step through the outbox in the same transaction. Pods share the work; a pod that dies loses nothing, the next tick picks the rows up (record 033).
+- The courier's position is a function of time along the routes; every 2 s each active delivery's position goes to `delivery.courier.v1`, claimed by exactly one pod.
+- Time runs faster than the clock on the wall: `SIMULATION__TIME_SCALE=0.1` makes a 30-minute delivery take 3 minutes.
 
-1. **Use this template** on GitHub → `nothingeats-<context>-service`, clone it next to the other repos.
-2. `scripts/init-service.sh <context>` renames packages, project and image. CI pushes a signed image on main automatically in every repo created from the template.
-3. Replace the `Item` example with the real domain.
+## API
 
-## Modules
-
-| Module | Contains | May depend on |
+| What | Where | Auth |
 |---|---|---|
-| `domain` | Aggregates, value objects, domain exceptions | nothing (pure Kotlin) |
-| `application` | Use cases, ports (`ItemRepository`), test fixtures (in-memory port implementations) | `domain`, `platform-core` |
-| `adapters` | Ktor routes, Exposed repositories, Flyway migrations (`db/migration`) | `application`, `platform-http`, `platform-persistence` |
-| `app` | kotlin-inject composition root, typed config, `main`, logging config | everything |
+| `QuoteDelivery` (gRPC, `nothingeats.delivery.v1.DeliveryService`, contract in `grpc-api/`) | port 9090, `dns:///delivery-service-grpc:9090` in the cluster | the customer's forwarded token |
+| `GET /api/delivery/v1/deliveries/{orderId}` | the plan, both routes, the courier's current position | the customer who ordered (others get 404) |
 
-The module graph enforces the dependency direction at compile time; Konsist tests in `app` cover the rest (domain imports, HTTP adapters never touching persistence).
+Quotes: kitchen time + ride (15 km/h) + handover, plus a wait when more deliveries are active than couriers on shift. Drop-offs more than 15 km away are refused (`DELIVERY_OUT_OF_RANGE`).
+
+Events: [docs/events.md](docs/events.md). PostHog server event `delivery_completed` (minutes, distance, vehicle) for the customer.
 
 ## Run
 
-One image, three modes: `serve` (default), `migrate`, `cron <task>`.
-
 ```bash
-./gradlew build                     # compile, ktlint, tests (Docker needed for Testcontainers)
+./gradlew build                     # tests need Docker (Postgres, Kafka via Testcontainers)
+buf lint && buf breaking --against '.git#branch=main'   # the gRPC contract
 
-export DATABASE__URL=jdbc:postgresql://localhost:15432/example DATABASE__USER=example DATABASE__PASSWORD=...
-./gradlew :app:run --args=migrate   # apply migrations
-./gradlew :app:run                  # serve on :8080, readable logs
-
-# In the k3d cluster, from the hub repo: Flux steps aside, Tilt rebuilds and redeploys on every change
-just dev <context>-service           # stop with: just dev-stop <context>-service
-
-./gradlew :app:jibDockerBuild -Djib.from.platforms=linux/arm64   # local image
+export DATABASE__URL=jdbc:postgresql://localhost:15432/delivery DATABASE__USER=delivery DATABASE__PASSWORD=...
+./gradlew :app:run --args=migrate
+./gradlew :app:run
 ```
-
-Configuration comes from env vars only: `__` nests, `_` separates words (`HTTP__PORT`, `DATABASE__MAXIMUM_POOL_SIZE`, `LIFECYCLE__DRAIN_DELAY`). Missing values stop the service at startup with a full report.
-
-## What the example shows
-
-- Domain rules as plain exceptions (`InvalidItemName`, `ItemNameTaken`), mapped to `AppError` in the use cases.
-- A unique constraint mapped to a domain exception by SQLSTATE and constraint name, surfacing as `409 ITEM_NAME_TAKEN`.
-- RFC 9457 problem responses with stable codes and the request id.
-- Lifecycle components, health checks and routes collected with `@IntoSet` in `ServiceComponent`.
-- A smoke test that wires the real composition root against real Postgres.
 
 ## License
 
