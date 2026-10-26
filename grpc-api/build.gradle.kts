@@ -7,6 +7,11 @@ plugins {
 
 group = "io.github.slashncode.nothingeats.delivery"
 
+// A service may use several contracts; their jars must not all be called grpc-api.jar.
+base {
+    archivesName = "delivery-grpc-api"
+}
+
 dependencies {
     implementation(platform(libs.nothingeats.platform.bom))
 }
