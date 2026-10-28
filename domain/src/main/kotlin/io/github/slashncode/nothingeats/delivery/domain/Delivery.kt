@@ -98,6 +98,8 @@ data class Delivery(
     val route: Route,
     val plan: DeliveryPlan,
     val status: DeliveryStatus,
+    /** The customer's analytics consent at checkout: server-side analytics about this delivery only then. */
+    val analytics: Boolean = false,
 ) {
     val active: Boolean get() = status != DeliveryStatus.DELIVERED
 

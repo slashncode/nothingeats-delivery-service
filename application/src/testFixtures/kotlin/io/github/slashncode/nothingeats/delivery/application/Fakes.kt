@@ -81,6 +81,7 @@ fun order(
     id: String = "o-1",
     userId: String = "u-1",
     quotedSeconds: Int = 180,
+    analytics: Boolean = true,
 ) = OrderToDeliver(
     orderId = id,
     userId = userId,
@@ -90,4 +91,5 @@ fun order(
     dropOff = Location(53.5636, 9.9654),
     dropOffLabel = "  Zuhause  ",
     quotedSeconds = quotedSeconds,
+    analytics = analytics,
 )

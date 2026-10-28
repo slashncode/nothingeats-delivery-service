@@ -28,7 +28,7 @@ class AdvanceDeliveries(
         return deliveries.advanceDue(now, BATCH) { delivery ->
             val (next, steps) = delivery.advance(now)
             steps.forEach { events.statusChanged(next, it, now) }
-            if (DeliveryStatus.DELIVERED in steps) {
+            if (DeliveryStatus.DELIVERED in steps && delivery.analytics) {
                 analytics.capture(
                     "delivery_completed",
                     mapOf(

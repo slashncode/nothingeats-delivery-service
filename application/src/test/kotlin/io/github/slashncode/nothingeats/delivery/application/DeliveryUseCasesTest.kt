@@ -51,6 +51,24 @@ class DeliveryUseCasesTest :
             }
         }
 
+        test("no server-side analytics for a customer who did not agree to it") {
+            val deliveries = InMemoryDeliveries()
+            val analytics = RecordingAnalytics()
+            val clock = MovableClock(noon)
+            StartDelivery(
+                deliveries,
+                RecordingDeliveryEvents(),
+                DirectTransactions,
+                SimulationSettings(),
+                clock,
+                Random(7),
+            )(order(analytics = false))
+            clock.now = noon.plusSeconds(181)
+
+            AdvanceDeliveries(deliveries, RecordingDeliveryEvents(), analytics, clock)() shouldBe 1
+            analytics.events shouldBe emptyList()
+        }
+
         test("each active courier's position goes out once per interval") {
             val deliveries = InMemoryDeliveries()
             val positions = RecordingPositions()

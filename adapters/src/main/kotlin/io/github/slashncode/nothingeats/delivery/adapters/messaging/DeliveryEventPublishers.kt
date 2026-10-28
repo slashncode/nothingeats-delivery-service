@@ -31,6 +31,7 @@ data class StatusChangedV1(
     val estimatedArrivalAt: String,
     val restaurantName: String,
     val courier: CourierV1,
+    val analytics: Boolean,
 )
 
 @Serializable
@@ -64,6 +65,7 @@ class OutboxDeliveryEvents(
                 estimatedArrivalAt = delivery.plan.deliveredAt.toString(),
                 restaurantName = delivery.restaurantName,
                 courier = CourierV1(delivery.courier.name, delivery.courier.vehicle.name),
+                analytics = delivery.analytics,
             ),
             StatusChangedV1.serializer(),
         )

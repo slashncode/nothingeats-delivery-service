@@ -35,6 +35,7 @@ internal object DeliveriesTable : Table("deliveries") {
     val orderId = text("order_id")
     val userId = text("user_id")
     val restaurantName = text("restaurant_name")
+    val analytics = bool("analytics")
     val pickupLatitude = double("pickup_latitude")
     val pickupLongitude = double("pickup_longitude")
     val dropOffLatitude = double("drop_off_latitude")
@@ -81,6 +82,7 @@ class ExposedDeliveries(
                     it[orderId] = delivery.orderId
                     it[userId] = delivery.userId
                     it[restaurantName] = delivery.restaurantName
+                    it[analytics] = delivery.analytics
                     it[pickupLatitude] = delivery.pickup.latitude
                     it[pickupLongitude] = delivery.pickup.longitude
                     it[dropOffLatitude] = delivery.dropOff.latitude
@@ -175,6 +177,7 @@ private fun ResultRow.toDelivery(): Delivery {
         orderId = this[t.orderId],
         userId = this[t.userId],
         restaurantName = this[t.restaurantName],
+        analytics = this[t.analytics],
         pickup = GeoPoint(this[t.pickupLatitude], this[t.pickupLongitude]),
         dropOff = GeoPoint(this[t.dropOffLatitude], this[t.dropOffLongitude]),
         dropOffLabel = this[t.dropOffLabel],

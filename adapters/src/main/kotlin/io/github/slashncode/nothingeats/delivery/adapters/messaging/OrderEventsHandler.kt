@@ -31,6 +31,7 @@ internal data class OrderPlaced(
     val restaurant: PlacedRestaurant,
     val dropOff: PlacedDropOff,
     val quotedSeconds: Int = 0,
+    val analytics: Boolean = false,
 )
 
 /** Every placed order gets a courier. Runs in the inbox transaction, so a redelivered order starts nothing twice. */
@@ -52,6 +53,7 @@ class OrderEventsHandler(
                 dropOff = Location(order.dropOff.latitude, order.dropOff.longitude),
                 dropOffLabel = order.dropOff.label,
                 quotedSeconds = order.quotedSeconds,
+                analytics = order.analytics,
             ),
         )
     }

@@ -54,6 +54,7 @@ data class OrderToDeliver(
     val dropOffLabel: String?,
     /** What the customer was promised at checkout; 0 when ordering had no quote (delivery was down). */
     val quotedSeconds: Int,
+    val analytics: Boolean = false,
 )
 
 /**
@@ -103,6 +104,7 @@ class StartDelivery(
                 route = Route.curved(pickup, dropOff, bend = bend()),
                 plan = DeliveryPlan.from(now, total, share),
                 status = DeliveryStatus.ACCEPTED,
+                analytics = order.analytics,
             )
         transactions.run {
             if (deliveries.insert(delivery)) events.statusChanged(delivery, DeliveryStatus.ACCEPTED, now)
