@@ -58,6 +58,7 @@ import me.tatarka.inject.annotations.IntoSet
 import me.tatarka.inject.annotations.Provides
 import me.tatarka.inject.annotations.Scope
 import java.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 @Scope
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER)
@@ -221,10 +222,11 @@ abstract class ServiceComponent(
     @Provides
     fun deliveryEvents(outbox: Outbox): DeliveryEvents = OutboxDeliveryEvents(outbox)
 
+    // Positions are fire-and-forget: without a broker, `send` gives up after a second instead of a minute.
     @ServiceScope
     @Provides
     fun courierPositions(clock: Clock): CourierPositions =
-        KafkaCourierPositions(KafkaClients.producer(config.kafka, "delivery-service-couriers"), clock)
+        KafkaCourierPositions(KafkaClients.producer(config.kafka, "delivery-service-couriers", maxBlock = 1.seconds), clock)
 
     @Provides
     fun startDelivery(

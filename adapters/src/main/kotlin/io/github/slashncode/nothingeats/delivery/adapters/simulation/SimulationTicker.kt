@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -25,6 +26,10 @@ import kotlin.time.Duration.Companion.seconds
  * The simulation's heartbeat on every pod: advance due deliveries, publish courier positions.
  * The state lives in Postgres (planned times, next_step_at), so a pod that dies loses nothing:
  * another one, or the same after a restart, picks the due rows up on its next tick.
+ *
+ * Two loops: deliveries move on through Postgres and the outbox, positions go straight to Kafka.
+ * In one loop, a Kafka outage held up every delivery and, once ticks went stale, took the pod out
+ * of rotation, so checkout could not get quotes. Only the deliveries' loop counts for health.
  */
 class SimulationTicker(
     private val advance: AdvanceDeliveries,
@@ -45,20 +50,31 @@ class SimulationTicker(
     override suspend fun onReady() {
         job =
             scope.launch {
-                while (isActive) {
-                    try {
+                launch {
+                    every("Simulation tick") {
                         advance()
-                        positions()
                         lastTick = clock.instant()
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        // A database hiccup skips a tick; the due rows are still due on the next one.
-                        log.warn("Simulation tick failed", e)
                     }
-                    delay(tick)
                 }
+                launch { every("Courier positions") { positions() } }
             }
+    }
+
+    // A database or broker hiccup skips a tick; what is due is still due on the next one.
+    private suspend fun every(
+        what: String,
+        work: suspend () -> Unit,
+    ) {
+        while (currentCoroutineContext().isActive) {
+            try {
+                work()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.warn("{} failed", what, e)
+            }
+            delay(tick)
+        }
     }
 
     override suspend fun stop() {
