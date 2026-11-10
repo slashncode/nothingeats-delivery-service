@@ -31,7 +31,6 @@ import io.github.slashncode.nothingeats.platform.core.run.ServiceRunner
 import io.github.slashncode.nothingeats.platform.grpc.AuthInterceptor
 import io.github.slashncode.nothingeats.platform.grpc.ErrorInterceptor
 import io.github.slashncode.nothingeats.platform.grpc.GrpcServer
-import io.github.slashncode.nothingeats.platform.http.ExceptionReporter
 import io.github.slashncode.nothingeats.platform.http.HttpExtension
 import io.github.slashncode.nothingeats.platform.http.HttpRoutes
 import io.github.slashncode.nothingeats.platform.http.HttpServer
@@ -50,7 +49,6 @@ import io.github.slashncode.nothingeats.platform.persistence.FlywayMigrations
 import io.github.slashncode.nothingeats.platform.persistence.MigrationSet
 import io.github.slashncode.nothingeats.platform.persistence.PostgresDatabase
 import io.github.slashncode.nothingeats.platform.posthog.PostHogAnalytics
-import io.github.slashncode.nothingeats.platform.posthog.PostHogExceptionReporter
 import io.github.slashncode.nothingeats.platform.posthog.PostHogHttpExtension
 import io.grpc.BindableService
 import me.tatarka.inject.annotations.Component
@@ -105,8 +103,7 @@ abstract class ServiceComponent(
         routes: Set<HttpRoutes>,
         auth: JwtAuth,
         extensions: Set<HttpExtension>,
-        exceptionReporter: ExceptionReporter,
-    ): HttpServer = HttpServer(config.http, readiness, HealthChecks(checks), routes, auth, extensions, exceptionReporter)
+    ): HttpServer = HttpServer(config.http, readiness, HealthChecks(checks), routes, auth, extensions)
 
     @ServiceScope
     @Provides
@@ -152,16 +149,13 @@ abstract class ServiceComponent(
     @Provides
     fun analytics(postHog: PostHogAnalytics): ProductAnalytics = postHog
 
-    @Provides
-    fun exceptionReporter(analytics: ProductAnalytics): ExceptionReporter = PostHogExceptionReporter(analytics)
-
     @IntoSet
     @Provides
     fun postHogLifecycle(postHog: PostHogAnalytics): LifecycleComponent = postHog
 
     @IntoSet
     @Provides
-    fun postHogHttp(): HttpExtension = PostHogHttpExtension()
+    fun postHogHttp(postHog: PostHogAnalytics): HttpExtension = PostHogHttpExtension(postHog)
 
     // Messaging
 
